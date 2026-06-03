@@ -1,0 +1,11 @@
+{
+  "id": "bites-snacks",
+  "name": "Bites Snacks",
+  "allowedEmails": ["regina@bitessnacks.com"],
+  "agent": {
+    "id": "bites-marketing",
+    "systemPromptFile": "agents/bites-marketing/CLAUDE.md",
+    "skillsDir": "agents/bites-marketing/skills/",
+    "availableModes": []
+  }
+}
