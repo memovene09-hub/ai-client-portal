@@ -54,11 +54,15 @@ const inputBase =
   'w-full bg-[#1C1C1C] border border-[#1E2D5A] text-white placeholder-gray-500 ' +
   'px-4 py-2 rounded-md text-sm ' +
   'focus:outline-none focus:border-[#8B35A8] focus:ring-1 focus:ring-[#8B35A8] ' +
-  'transition-colors duration-150'
+  'transition-[border-color,box-shadow] duration-150'
 
+// Red border + red ring; overrides focus colors when field is invalid
 const inputErr = 'border-[#ef4444] focus:border-[#ef4444] focus:ring-[#ef4444]'
 
 const labelBase = 'block mb-2 text-sm font-medium text-white'
+
+// Helper: returns className for a field wrapper to keep spacing consistent
+const fieldCls = 'my-4'
 
 // ---------------------------------------------------------------------------
 // Form state
@@ -234,7 +238,7 @@ export default function SettingsPage() {
             </h2>
 
             {/* Nombre */}
-            <div className="my-4">
+            <div className={fieldCls}>
               <label className={labelBase}>
                 Nombre de empresa <span className="text-[#ef4444]">*</span>
               </label>
@@ -243,6 +247,7 @@ export default function SettingsPage() {
                 placeholder="Ej: Distribuidora Zapopan S.A."
                 value={form.name}
                 onChange={e => setField('name', e.target.value)}
+                aria-invalid={!!errors.name}
                 className={`${inputBase} ${errors.name ? inputErr : ''}`}
               />
               {errors.name && (
@@ -251,7 +256,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Descripción */}
-            <div className="my-4">
+            <div className={fieldCls}>
               <label className={labelBase}>
                 Descripción <span className="text-[#ef4444]">*</span>
               </label>
@@ -260,6 +265,7 @@ export default function SettingsPage() {
                 placeholder="Qué hace la empresa, cómo opera, a quién atiende..."
                 value={form.description}
                 onChange={e => setField('description', e.target.value)}
+                aria-invalid={!!errors.description}
                 className={`${inputBase} resize-none ${errors.description ? inputErr : ''}`}
               />
               {errors.description && (
@@ -268,7 +274,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Tone of voice */}
-            <div className="my-4">
+            <div className={fieldCls}>
               <label className={labelBase}>Tone of voice</label>
               <input
                 type="text"
@@ -285,7 +291,7 @@ export default function SettingsPage() {
             <h2 className="text-lg font-semibold text-white mb-4">Mercado</h2>
 
             {/* Audiencia objetivo */}
-            <div className="my-4">
+            <div className={fieldCls}>
               <label className={labelBase}>Audiencia objetivo</label>
               <textarea
                 rows={2}
@@ -297,7 +303,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Pain points */}
-            <div className="my-4">
+            <div className={fieldCls}>
               <label className={labelBase}>
                 Pain points{' '}
                 <span className="text-[#CBD5E1] font-normal">(uno por línea)</span>
