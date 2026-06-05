@@ -1,0 +1,24 @@
+{
+  "modes": [
+    {
+      "id": "empresa",
+      "label": "Por empresa",
+      "suffix": "El usuario va a darte el nombre de una empresa. Ejecuta Modo A: flujo completo de investigación, scoring y registro."
+    },
+    {
+      "id": "sector",
+      "label": "Por sector",
+      "suffix": "El usuario va a darte un sector y ciudad. Ejecuta Modo B: propón 5 candidatos y espera aprobación antes de analizar en profundidad."
+    },
+    {
+      "id": "oportunidad",
+      "label": "Oportunidad M365",
+      "suffix": "El usuario va a darte una oportunidad o problema M365 específico. Ejecuta Modo C: deduce sectores afectados y busca candidatos con M365 activo."
+    },
+    {
+      "id": "envio",
+      "label": "Enviar pendientes",
+      "suffix": "Ejecuta el Modo Envío: consulta Notion filtrando Listo para enviar = YES, muestra la lista a Memo, espera confirmación explícita antes de enviar."
+    }
+  ]
+}

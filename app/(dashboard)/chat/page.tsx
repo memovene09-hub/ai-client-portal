@@ -61,23 +61,23 @@ export default function ChatPage() {
 
   if (!tenant) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center bg-navy">
         <Spinner />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full bg-navy">
       <ModeSelector
         modes={tenant.agent.availableModes}
         selectedMode={modeId}
         onSelect={setModeId}
       />
-      <div className="flex flex-col flex-1">
+      <section className="flex-1 min-w-0 flex flex-col bg-navy">
         <ChatWindow messages={messages} isStreaming={isStreaming} />
         <InputBar onSend={handleSend} disabled={isStreaming} />
-      </div>
+      </section>
     </div>
   )
 }

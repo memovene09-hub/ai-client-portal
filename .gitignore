@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# compiled agent artifacts (generated — do not edit manually)
+agents/*/compiled.json

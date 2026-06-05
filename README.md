@@ -30,6 +30,33 @@ Abre [http://localhost:3000](http://localhost:3000) en el navegador.
 
 ---
 
+## Pipeline de compilación de agentes
+
+Los agentes viven en `agents/[agentId]/` como archivos Markdown editables. Antes de que el portal pueda usarlos, hay que compilarlos:
+
+```bash
+npm run compile-agents
+```
+
+Esto genera `agents/[agentId]/compiled.json` — un JSON serializado con el system prompt completo, contexto, skills y modos. El portal consume ese artefacto en runtime.
+
+**Reglas:**
+- Correr `npm run compile-agents` cada vez que se modifique `CLAUDE.md`, `ClaryonContext.md`, cualquier `skills/*.md` o `MODES.json`.
+- `compiled.json` es autogenerado — no editar a mano.
+- `compiled.json` está en `.gitignore` y no se commitea.
+
+**Archivos fuente por agente:**
+
+| Archivo | Rol |
+|---|---|
+| `CLAUDE.md` | System prompt base — instrucciones del agente |
+| `ClaryonContext.md` | Contexto de la empresa y servicios |
+| `skills/*.md` | Habilidades modulares del agente |
+| `MODES.json` | Modos de operación con sus suffixes de prompt |
+| `compiled.json` | Artefacto generado — no commitear |
+
+---
+
 ## Variables de entorno requeridas
 
 | Variable | Descripción |
