@@ -63,5 +63,6 @@ Esto genera `agents/[agentId]/compiled.json` — un JSON serializado con el syst
 |---|---|
 | `ANTHROPIC_API_KEY` | API key de Anthropic |
 | `NOTION_API_KEY` | Token de integración de Notion |
+| `DATABASE_URL` | Connection string de Postgres (ej. `postgresql://user:pass@host:5432/db`) |
 | `NEXT_PUBLIC_APP_NAME` | Nombre de la app (default: Claryon Portal) |
 | `NEXT_PUBLIC_TENANT_ID` | ID del tenant activo (default: claryon-demo) |
