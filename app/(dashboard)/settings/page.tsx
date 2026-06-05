@@ -1,32 +1,67 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import Toast, { type ToastState } from '@/components/ui/Toast'
+import { useRouter } from 'next/navigation'
+import { Trash2, Plus, Check, X, Loader2 } from 'lucide-react'
 import type { TenantContextProduct } from '@/types'
 
+// ---------------------------------------------------------------------------
+// Toast (inline — avoids a second file import for this sprint)
+// ---------------------------------------------------------------------------
+
+type ToastVariant = 'success' | 'error'
+type ToastState = { message: string; variant: ToastVariant } | null
+
+function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(onDismiss, 3000)
+    return () => clearTimeout(t)
+  }, [toast, onDismiss])
+
+  if (!toast) return null
+
+  const isSuccess = toast.variant === 'success'
+  return (
+    <div
+      role="alert"
+      className={[
+        'fixed top-4 right-4 z-50',
+        'flex items-center gap-2 p-4 rounded-md',
+        'text-sm font-medium text-white',
+        isSuccess ? 'bg-[#22c55e]' : 'bg-[#ef4444]',
+      ].join(' ')}
+    >
+      {isSuccess ? <Check className="w-4 h-4 flex-none" /> : <X className="w-4 h-4 flex-none" />}
+      {toast.message}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const ORG_ID = 'claryon-demo'
-
-// ---------------------------------------------------------------------------
-// Shared input styles
-// ---------------------------------------------------------------------------
-
-const inputCls =
-  'w-full bg-navy border border-claryon-border rounded-lg px-3.5 py-2.5 text-[14px] text-white placeholder-text-secondary focus:outline-none focus:border-purple transition-colors'
-
-const labelCls = 'block text-[13px] font-medium text-text-secondary mb-1.5'
-
-const sectionCls = 'bg-card border border-claryon-border rounded-2xl px-7 py-6 flex flex-col gap-5'
-
-const sectionTitle = 'text-[15px] font-semibold text-lavender mb-1'
-
-// ---------------------------------------------------------------------------
-// Empty product row
-// ---------------------------------------------------------------------------
 
 const emptyProduct = (): TenantContextProduct => ({ name: '', description: '', price: '' })
 
 // ---------------------------------------------------------------------------
-// Form state type
+// Shared style tokens
+// ---------------------------------------------------------------------------
+
+const inputBase =
+  'w-full bg-[#1C1C1C] border border-[#1E2D5A] text-white placeholder-gray-500 ' +
+  'px-4 py-2 rounded-md text-sm ' +
+  'focus:outline-none focus:border-[#8B35A8] focus:ring-1 focus:ring-[#8B35A8] ' +
+  'transition-colors duration-150'
+
+const inputErr = 'border-[#ef4444] focus:border-[#ef4444] focus:ring-[#ef4444]'
+
+const labelBase = 'block mb-2 text-sm font-medium text-white'
+
+// ---------------------------------------------------------------------------
+// Form state
 // ---------------------------------------------------------------------------
 
 type FormState = {
@@ -34,10 +69,12 @@ type FormState = {
   description: string
   tone_of_voice: string
   target_audience: string
-  pain_points: string          // one per line in the textarea
+  pain_points: string
   products: TenantContextProduct[]
   main_objective: string
 }
+
+type FormErrors = Partial<Record<keyof FormState | 'products_min', string>>
 
 function defaultForm(): FormState {
   return {
@@ -52,19 +89,21 @@ function defaultForm(): FormState {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Page
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [form, setForm] = useState<FormState>(defaultForm)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState | 'products_min', string>>>({})
+  const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<ToastState>(null)
 
   const dismissToast = useCallback(() => setToast(null), [])
 
-  // Load existing context on mount
+  // ── Load saved context ────────────────────────────────────────────────────
+
   useEffect(() => {
     fetch(`/api/settings?org_id=${ORG_ID}`)
       .then(r => r.json())
@@ -82,11 +121,11 @@ export default function SettingsPage() {
           main_objective: data.goals?.main_objective ?? '',
         })
       })
-      .catch(() => {/* first time or no DB — start empty */})
+      .catch(() => { /* first time — start empty */ })
       .finally(() => setLoading(false))
   }, [])
 
-  // ---- field helpers -------------------------------------------------------
+  // ── Field helpers ─────────────────────────────────────────────────────────
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -94,12 +133,10 @@ export default function SettingsPage() {
   }
 
   function setProduct(index: number, field: keyof TenantContextProduct, value: string) {
-    setForm(prev => {
-      const updated = prev.products.map((p, i) =>
-        i === index ? { ...p, [field]: value } : p
-      )
-      return { ...prev, products: updated }
-    })
+    setForm(prev => ({
+      ...prev,
+      products: prev.products.map((p, i) => i === index ? { ...p, [field]: value } : p),
+    }))
     if (errors.products_min) setErrors(prev => ({ ...prev, products_min: undefined }))
   }
 
@@ -111,24 +148,22 @@ export default function SettingsPage() {
     setForm(prev => ({ ...prev, products: prev.products.filter((_, i) => i !== index) }))
   }
 
-  // ---- validation ----------------------------------------------------------
+  // ── Validation ────────────────────────────────────────────────────────────
 
   function validate(): boolean {
-    const next: typeof errors = {}
-    if (!form.name.trim()) next.name = 'Nombre de empresa es obligatorio'
+    const next: FormErrors = {}
+    if (!form.name.trim())        next.name = 'Nombre de empresa es obligatorio'
     if (!form.description.trim()) next.description = 'Descripción es obligatoria'
-    if (form.products.length === 0 || form.products.every(p => !p.name.trim())) {
+    if (!form.products.some(p => p.name.trim()))
       next.products_min = 'Agrega al menos un producto con nombre'
-    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
 
-  // ---- submit --------------------------------------------------------------
+  // ── Submit ────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!validate()) return
-
     setSaving(true)
     try {
       const res = await fetch('/api/settings', {
@@ -143,18 +178,13 @@ export default function SettingsPage() {
           },
           market: {
             target_audience: form.target_audience.trim(),
-            pain_points: form.pain_points
-              .split('\n')
-              .map(l => l.trim())
-              .filter(Boolean),
+            pain_points: form.pain_points.split('\n').map(l => l.trim()).filter(Boolean),
           },
           products: form.products.filter(p => p.name.trim()),
           goals: { main_objective: form.main_objective.trim() },
         }),
       })
-
       const json = await res.json()
-
       if (!res.ok) {
         setToast({ message: json.error ?? 'Error al guardar', variant: 'error' })
       } else {
@@ -167,208 +197,240 @@ export default function SettingsPage() {
     }
   }
 
-  // ---- render --------------------------------------------------------------
+  // ── Loading state ─────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-text-secondary text-[14px]">
+      <div className="flex items-center justify-center h-full text-[#CBD5E1] text-sm">
         Cargando configuración...
       </div>
     )
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <>
-      <div className="px-[52px] pt-11 pb-14">
-        <div className="max-w-[780px]">
+      {/* ── Page wrapper ───────────────────────────────────────────────── */}
+      <div className="max-w-4xl mx-auto py-8 px-6">
 
-          <header className="mb-8">
-            <h1 className="text-[30px] font-bold tracking-[-0.01em] mb-1.5">
-              Configuración de empresa
-            </h1>
-            <p className="text-text-secondary text-[14.5px]">
-              Esta información contextualiza a tu agente para respuestas más precisas.
-            </p>
-          </header>
+        {/* ── Page header ──────────────────────────────────────────────── */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white mb-1">
+            Configuración de la empresa
+          </h1>
+          <p className="text-sm text-[#CBD5E1]">
+            Actualiza la información para que nuestros agentes entiendan tu negocio y entreguen mejores resultados.
+          </p>
+        </div>
 
-          <div className="flex flex-col gap-6">
+        {/* ── Main card ────────────────────────────────────────────────── */}
+        <div className="bg-[#1C1C1C] border border-[#1E2D5A] rounded-lg p-8">
 
-            {/* ── Información básica ─────────────────────────────────── */}
-            <section className={sectionCls}>
-              <h2 className={sectionTitle}>Información básica</h2>
+          {/* ── Sección 1 — Información básica ───────────────────────── */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Información básica
+            </h2>
 
-              <div>
-                <label className={labelCls}>Nombre de empresa <span className="text-purple-light">*</span></label>
-                <input
-                  type="text"
-                  placeholder="Ej: Distribuidora Zapopan S.A."
-                  value={form.name}
-                  onChange={e => setField('name', e.target.value)}
-                  className={`${inputCls} ${errors.name ? 'border-red-400' : ''}`}
-                />
-                {errors.name && <p className="text-red-400 text-[12px] mt-1">{errors.name}</p>}
-              </div>
-
-              <div>
-                <label className={labelCls}>Descripción <span className="text-purple-light">*</span></label>
-                <textarea
-                  rows={3}
-                  placeholder="Qué hace la empresa, cómo opera, a quién atiende..."
-                  value={form.description}
-                  onChange={e => setField('description', e.target.value)}
-                  className={`${inputCls} resize-none ${errors.description ? 'border-red-400' : ''}`}
-                />
-                {errors.description && <p className="text-red-400 text-[12px] mt-1">{errors.description}</p>}
-              </div>
-
-              <div>
-                <label className={labelCls}>Tone of voice</label>
-                <input
-                  type="text"
-                  placeholder="Ej: casual, divertido, accesible"
-                  value={form.tone_of_voice}
-                  onChange={e => setField('tone_of_voice', e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-            </section>
-
-            {/* ── Mercado ────────────────────────────────────────────── */}
-            <section className={sectionCls}>
-              <h2 className={sectionTitle}>Mercado</h2>
-
-              <div>
-                <label className={labelCls}>Audiencia objetivo</label>
-                <textarea
-                  rows={2}
-                  placeholder="Ej: Dueños de PyMEs en Guadalajara con 10–50 empleados..."
-                  value={form.target_audience}
-                  onChange={e => setField('target_audience', e.target.value)}
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Pain points <span className="text-text-secondary font-normal">(uno por línea)</span></label>
-                <textarea
-                  rows={4}
-                  placeholder={"Procesos manuales que consumen mucho tiempo\nFalta de visibilidad sobre el negocio\nDificultad para escalar sin caos"}
-                  value={form.pain_points}
-                  onChange={e => setField('pain_points', e.target.value)}
-                  className={`${inputCls} resize-none font-mono text-[13px]`}
-                />
-              </div>
-            </section>
-
-            {/* ── Productos ──────────────────────────────────────────── */}
-            <section className={sectionCls}>
-              <div className="flex items-center justify-between">
-                <h2 className={sectionTitle}>
-                  Productos / Servicios <span className="text-purple-light">*</span>
-                </h2>
-                <button
-                  type="button"
-                  onClick={addProduct}
-                  className="flex items-center gap-1.5 text-[13px] font-medium text-purple-light hover:text-white transition-colors"
-                >
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                  </svg>
-                  Agregar producto
-                </button>
-              </div>
-
-              {errors.products_min && (
-                <p className="text-red-400 text-[12px] -mt-2">{errors.products_min}</p>
+            {/* Nombre */}
+            <div className="my-4">
+              <label className={labelBase}>
+                Nombre de empresa <span className="text-[#ef4444]">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Distribuidora Zapopan S.A."
+                value={form.name}
+                onChange={e => setField('name', e.target.value)}
+                className={`${inputBase} ${errors.name ? inputErr : ''}`}
+              />
+              {errors.name && (
+                <p className="mt-1 text-xs text-[#ef4444]">{errors.name}</p>
               )}
+            </div>
 
-              <div className="flex flex-col gap-3">
-                {/* Header row */}
-                {form.products.length > 0 && (
-                  <div className="grid grid-cols-[1fr_1.5fr_100px_36px] gap-3 px-1">
-                    <span className="text-[11.5px] font-semibold text-text-secondary uppercase tracking-[0.08em]">Nombre</span>
-                    <span className="text-[11.5px] font-semibold text-text-secondary uppercase tracking-[0.08em]">Descripción</span>
-                    <span className="text-[11.5px] font-semibold text-text-secondary uppercase tracking-[0.08em]">Precio</span>
-                    <span />
-                  </div>
-                )}
+            {/* Descripción */}
+            <div className="my-4">
+              <label className={labelBase}>
+                Descripción <span className="text-[#ef4444]">*</span>
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Qué hace la empresa, cómo opera, a quién atiende..."
+                value={form.description}
+                onChange={e => setField('description', e.target.value)}
+                className={`${inputBase} resize-none ${errors.description ? inputErr : ''}`}
+              />
+              {errors.description && (
+                <p className="mt-1 text-xs text-[#ef4444]">{errors.description}</p>
+              )}
+            </div>
 
-                {form.products.map((product, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1.5fr_100px_36px] gap-3 items-start">
+            {/* Tone of voice */}
+            <div className="my-4">
+              <label className={labelBase}>Tone of voice</label>
+              <input
+                type="text"
+                placeholder="Ej: casual, divertido, accesible"
+                value={form.tone_of_voice}
+                onChange={e => setField('tone_of_voice', e.target.value)}
+                className={inputBase}
+              />
+            </div>
+          </section>
+
+          {/* ── Sección 2 — Mercado ──────────────────────────────────── */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4">Mercado</h2>
+
+            {/* Audiencia objetivo */}
+            <div className="my-4">
+              <label className={labelBase}>Audiencia objetivo</label>
+              <textarea
+                rows={2}
+                placeholder="Ej: Dueños de PyMEs en Guadalajara con 10–50 empleados..."
+                value={form.target_audience}
+                onChange={e => setField('target_audience', e.target.value)}
+                className={`${inputBase} resize-none`}
+              />
+            </div>
+
+            {/* Pain points */}
+            <div className="my-4">
+              <label className={labelBase}>
+                Pain points{' '}
+                <span className="text-[#CBD5E1] font-normal">(uno por línea)</span>
+              </label>
+              <textarea
+                rows={4}
+                placeholder={
+                  'Procesos manuales que consumen mucho tiempo\n' +
+                  'Falta de visibilidad sobre el negocio\n' +
+                  'Dificultad para escalar sin caos'
+                }
+                value={form.pain_points}
+                onChange={e => setField('pain_points', e.target.value)}
+                className={`${inputBase} resize-none font-mono`}
+              />
+            </div>
+          </section>
+
+          {/* ── Sección 3 — Productos ────────────────────────────────── */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Productos / Servicios <span className="text-[#ef4444]">*</span>
+            </h2>
+
+            {/* Table */}
+            <div className="mt-4 bg-[#1C1C1C] border border-[#1E2D5A] rounded-lg overflow-hidden">
+              {/* Header */}
+              <div className="flex bg-[#1E2D5A] text-white font-semibold text-sm px-4 py-3">
+                <span className="flex-1">Nombre</span>
+                <span className="flex-[2]">Descripción</span>
+                <span className="flex-1">Precio</span>
+                <span className="w-20" />
+              </div>
+
+              {/* Rows */}
+              {form.products.map((product, i) => (
+                <div
+                  key={i}
+                  className="flex items-center border-t border-[#1E2D5A] px-4 py-3 gap-3"
+                >
+                  <div className="flex-1">
                     <input
                       type="text"
                       placeholder="Nombre"
                       value={product.name}
                       onChange={e => setProduct(i, 'name', e.target.value)}
-                      className={inputCls}
+                      className={inputBase}
                     />
+                  </div>
+                  <div className="flex-[2]">
                     <input
                       type="text"
                       placeholder="Descripción breve"
                       value={product.description}
                       onChange={e => setProduct(i, 'description', e.target.value)}
-                      className={inputCls}
+                      className={inputBase}
                     />
+                  </div>
+                  <div className="flex-1">
                     <input
                       type="text"
                       placeholder="$0 MXN"
                       value={String(product.price)}
                       onChange={e => setProduct(i, 'price', e.target.value)}
-                      className={inputCls}
+                      className={inputBase}
                     />
+                  </div>
+                  <div className="w-20 flex justify-center">
                     <button
                       type="button"
                       onClick={() => removeProduct(i)}
-                      disabled={form.products.length === 1}
                       title="Eliminar"
-                      className="flex items-center justify-center h-[42px] rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="text-[#ef4444] hover:text-[#dc2626] transition-colors cursor-pointer"
                     >
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clipRule="evenodd" />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                ))}
-              </div>
-            </section>
+                </div>
+              ))}
+            </div>
 
-            {/* ── Objetivos ──────────────────────────────────────────── */}
-            <section className={sectionCls}>
-              <h2 className={sectionTitle}>Objetivos</h2>
+            {/* Error message */}
+            {errors.products_min && (
+              <p className="mt-1 text-xs text-[#ef4444]">{errors.products_min}</p>
+            )}
 
-              <div>
-                <label className={labelCls}>Objetivo principal</label>
-                <textarea
-                  rows={3}
-                  placeholder="Ej: Cerrar 2 clientes nuevos por mes en el segmento PyME de manufactura en Jalisco..."
-                  value={form.main_objective}
-                  onChange={e => setField('main_objective', e.target.value)}
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-            </section>
+            {/* Add product button */}
+            <button
+              type="button"
+              onClick={addProduct}
+              className="mt-3 flex items-center gap-1 text-sm font-medium text-[#8B35A8] hover:text-[#B8A8D4] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar producto
+            </button>
+          </section>
 
-          </div>
+          {/* ── Sección 4 — Objetivo ─────────────────────────────────── */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4">Objetivo</h2>
 
-          {/* ── Save button ──────────────────────────────────────────── */}
-          <div className="mt-8 flex justify-end">
+            <div className="my-4">
+              <label className={labelBase}>Objetivo principal</label>
+              <textarea
+                rows={3}
+                placeholder="Ej: Cerrar 2 clientes nuevos por mes en el segmento PyME de manufactura en Jalisco..."
+                value={form.main_objective}
+                onChange={e => setField('main_objective', e.target.value)}
+                className={`${inputBase} resize-none`}
+              />
+            </div>
+          </section>
+
+          {/* ── Botones ──────────────────────────────────────────────── */}
+          <div className="mt-8 pt-8 border-t border-[#1E2D5A] flex flex-row-reverse gap-4">
+            {/* Guardar */}
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2.5 bg-purple text-white rounded-[11px] px-7 py-3.5 text-[15px] font-semibold shadow-cta transition-all duration-150 hover:bg-purple-hover hover:-translate-y-px hover:shadow-cta-hover active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0"
+              className="inline-flex items-center gap-2 bg-[#8B35A8] text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-[#B8A8D4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Guardando...
-                </>
-              ) : (
-                'Guardar configuración'
-              )}
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+
+            {/* Cancelar */}
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="px-6 py-2 rounded-md text-sm font-medium text-[#8B35A8] hover:bg-[#1E2D5A] transition-colors"
+            >
+              Cancelar
             </button>
           </div>
 
