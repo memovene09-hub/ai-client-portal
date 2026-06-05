@@ -342,7 +342,7 @@ export default function SettingsPage() {
               {form.products.map((product, i) => (
                 <div
                   key={i}
-                  className="flex items-center border-t border-[#1E2D5A] px-4 py-3 gap-3"
+                  className="flex items-center border-t border-[#1E2D5A] px-4 py-3 gap-3 hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex-1">
                     <input
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={addProduct}
-              className="mt-3 flex items-center gap-1 text-sm font-medium text-[#8B35A8] hover:text-[#B8A8D4] transition-colors"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[#8B35A8] hover:text-[#B8A8D4] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B35A8] rounded"
             >
               <Plus className="w-4 h-4" />
               Agregar producto
