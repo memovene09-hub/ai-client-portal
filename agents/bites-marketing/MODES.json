@@ -1,0 +1,24 @@
+{
+  "modes": [
+    {
+      "id": "redes",
+      "label": "Redes sociales",
+      "suffix": "El usuario va a pedirte contenido para redes sociales. Ejecuta el Skill de Redes Sociales: genera copys para Instagram, TikTok o Facebook según se indique. Si no especifica plataforma, genera para Instagram por defecto. Entrega: caption + hashtags + sugerencia de visual."
+    },
+    {
+      "id": "contenido",
+      "label": "Contenido & Blog",
+      "suffix": "El usuario va a pedirte un artículo de blog, email o descripción de producto. Ejecuta el Skill de Contenido: genera el texto completo, optimizado para SEO básico y en el tono de Bites Snacks. Si es email, incluye asunto y preview text."
+    },
+    {
+      "id": "campana",
+      "label": "Planear campaña",
+      "suffix": "El usuario va a pedirte una campaña de marketing. Propón: objetivo de la campaña, audiencia objetivo, 3 mensajes clave, calendario de publicaciones (2 semanas), y KPIs a medir. Espera aprobación antes de generar los assets de contenido."
+    },
+    {
+      "id": "analisis",
+      "label": "Análisis de tendencias",
+      "suffix": "El usuario va a preguntarte sobre tendencias de mercado, competencia o comportamiento de audiencia. Analiza con base en el contexto de marca disponible y tendencias generales del sector de snacks saludables en México. Sé honesto cuando no tengas datos específicos."
+    }
+  ]
+}
