@@ -10,13 +10,15 @@ export async function POST(req: Request) {
   }
 
   const tenant = getTenantConfig(tenantId)
-  // TODO (Fase 2): drive agentId from tenant config instead of hardcoding
   const agentId = tenant.agent.id
-  const systemPrompt = buildSystemPromptFromCompiled(agentId, modeId)
+
+  // buildSystemPromptFromCompiled is now async — fetches tenant context from DB
+  const systemPrompt = await buildSystemPromptFromCompiled(tenantId, agentId, modeId)
+
   const client = createAnthropicClient()
 
   const stream = await client.messages.stream({
-    model: 'claude-haiku-4-5-20251001', // Modelo para testing, cambiar por el modelo definitivo
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 4096,
     system: systemPrompt,
     messages

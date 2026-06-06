@@ -2,9 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import { TenantConfig } from '@/types'
 import Anthropic from '@anthropic-ai/sdk'
+import { getTenantContext } from '@/lib/db/tenant-context'
 
 // ---------------------------------------------------------------------------
-// Compiled-agent path
+// Compiled-agent types
 // ---------------------------------------------------------------------------
 
 interface CompiledSkill {
@@ -29,7 +30,15 @@ interface CompiledAgent {
   modes: CompiledMode[]
 }
 
-export function buildSystemPromptFromCompiled(agentId: string, modeId: string): string {
+// ---------------------------------------------------------------------------
+// Compiled path (reads compiled.json + injects DB tenant context)
+// ---------------------------------------------------------------------------
+
+export async function buildSystemPromptFromCompiled(
+  tenantId: string,
+  agentId: string,
+  modeId: string
+): Promise<string> {
   const compiledPath = path.join(process.cwd(), 'agents', agentId, 'compiled.json')
 
   if (!fs.existsSync(compiledPath)) {
@@ -43,10 +52,17 @@ export function buildSystemPromptFromCompiled(agentId: string, modeId: string): 
 
   const skillsBlock = compiled.skills.map(s => s.content).join('\n\n---\n\n')
 
+  // Fetch live tenant context from DB and inject into prompt
+  const tenantContext = await getTenantContext(tenantId)
+  const contextBlock = tenantContext
+    ? `\n\n## Contexto de la empresa\n\n${JSON.stringify(tenantContext, null, 2)}`
+    : ''
+
   return [
     compiled.system_prompt_base,
     compiled.context ? `\n\n${compiled.context}` : '',
-    skillsBlock ? `\n\n## Skills cargados\n\n${skillsBlock}` : '',
+    contextBlock,
+    skillsBlock ? `\n\n## Skills\n\n${skillsBlock}` : '',
     modeSuffix ? `\n\n## Instrucción de modo activo\n\n${modeSuffix}` : '',
   ].join('')
 }
